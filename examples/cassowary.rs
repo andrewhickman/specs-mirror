@@ -1,3 +1,6 @@
+//! This example demonstrates the use of `MirroredStorage` to keep the constraints in the `specs`
+//! world synchronised with the constraints in a `cassowary` solver.
+
 extern crate cassowary;
 extern crate specs_mirror;
 extern crate specs;
@@ -41,7 +44,7 @@ impl<'a> System<'a> for LayoutSystem {
             }
         }
 
-        // Apply changes here ...
+        // Fetch and apply changes here ...
     }
 }
 

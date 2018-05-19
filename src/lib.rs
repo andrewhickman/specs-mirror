@@ -53,12 +53,16 @@ impl<C, D: EventData<C>> Event<C, D> {
     }
 }
 
-/// Data that can be send along with an `Event`.
+/// Describes data that can be send along with an [`Event`](enum.Event.html).
 pub trait EventData<C>: 'static {
+    /// The data that will be sent with insertion events.
     type InsertData: Send + Sync + 'static;
+    /// The data that will be sent with removal events.
     type RemoveData: Send + Sync + 'static;
 
+    /// Constructs an instance of `InsertData` from the component being inserted and its index.
     fn insert_data(id: Index, comp: &mut C) -> Self::InsertData;
+    /// Constructs an instance of `RemoveData` from the component being removed and its index.
     fn remove_data(id: Index, comp: &mut C) -> Self::RemoveData;
 }
 

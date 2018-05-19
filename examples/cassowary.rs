@@ -11,7 +11,7 @@ use cassowary::WeightedRelation::*;
 use cassowary::{Constraint, Solver, Variable};
 use shrev::ReaderId;
 use specs::prelude::*;
-use specs_mirror::{CloneData, Event, MirroredStorage};
+use specs_mirror::*;
 
 #[derive(Clone, Debug)]
 struct Constraints(Vec<Constraint>);
@@ -22,13 +22,13 @@ impl Component for Constraints {
 
 struct LayoutSystem {
     solver: Solver,
-    reader: ReaderId<Event<Constraints, CloneData>>,
+    reader: ReaderId<UpdateEvent<Constraints, CloneData>>,
 }
 
 impl LayoutSystem {
     fn new(mut cns: WriteStorage<Constraints>) -> Self {
         let solver = Solver::new();
-        let reader = cns.unprotected_storage_mut().register_reader();
+        let reader = cns.register_reader();
         LayoutSystem { solver, reader }
     }
 }
@@ -38,12 +38,12 @@ impl<'a> System<'a> for LayoutSystem {
 
     fn run(&mut self, cns: Self::SystemData) {
         // synchronize the changes to constraints in specs with the solver.
-        for event in cns.unprotected_storage().read(&mut self.reader) {
+        for event in cns.read_events(&mut self.reader) {
             match event {
-                Event::Inserted(_, data) => {
+                UpdateEvent::Inserted(_, data) => {
                     self.solver.add_constraints(&data.0).ok();
                 }
-                Event::Removed(_, data) => for cn in &data.0 {
+                UpdateEvent::Removed(_, data) => for cn in &data.0 {
                     self.solver.remove_constraint(cn).ok();
                 },
             }
@@ -75,7 +75,7 @@ fn main() {
 
     sys.run_now(&mut world.res);
 
-    world.delete_entity(e1);
+    world.delete_entity(e1).unwrap();
     let _e3 = world
         .create_entity()
         .with(Constraints(vec![var1 * 2.0 | EQ(REQUIRED) | var0]))

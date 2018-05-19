@@ -5,7 +5,7 @@ extern crate specs_mirror;
 use shrev::ReaderId;
 use specs::prelude::*;
 use specs::world::Index;
-use specs_mirror::{CloneData, Event, MirroredStorage};
+use specs_mirror::*;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -18,13 +18,13 @@ impl Component for Comp {
 }
 
 struct CompSystem {
-    reader: ReaderId<Event<Comp, CloneData>>,
+    reader: ReaderId<UpdateEvent<Comp, CloneData>>,
     store: HashMap<Index, Comp>,
 }
 
 impl CompSystem {
     fn new(mut store: WriteStorage<Comp>) -> Self {
-        let reader = store.unprotected_storage_mut().chan_mut().register_reader();
+        let reader = store.register_reader();
         let store = HashMap::new();
         CompSystem { reader, store }
     }
@@ -34,12 +34,12 @@ impl<'a> System<'a> for CompSystem {
     type SystemData = ReadStorage<'a, Comp>;
 
     fn run(&mut self, comp: Self::SystemData) {
-        for event in comp.unprotected_storage().read(&mut self.reader) {
+        for event in comp.read_events(&mut self.reader) {
             match *event {
-                Event::Inserted(id, ref data) => {
+                UpdateEvent::Inserted(id, ref data) => {
                     assert!(self.store.insert(id, data.clone()).is_none())
                 }
-                Event::Removed(id, ref data) => {
+                UpdateEvent::Removed(id, ref data) => {
                     assert_eq!(self.store.remove(&id), Some(data.clone()))
                 }
             }

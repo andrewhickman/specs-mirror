@@ -4,5 +4,5 @@ name = "specs-mirror"
 version = "0.1.0"
 [dependencies]
 hibitset = "0.5.0"
-specs = "=0.11.0-alpha6"
+specs = "0.11.2"
 shrev = "1.0.0"

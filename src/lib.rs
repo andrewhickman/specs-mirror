@@ -15,11 +15,11 @@ pub struct MirroredStorage<C, D: EventData<C>, S = DenseVecStorage<C>> {
 }
 
 impl<C, D: EventData<C>, S> MirroredStorage<C, D, S> {
-    fn chan(&self) -> &EventChannel<Event<C, D>> {
+    pub fn chan(&self) -> &EventChannel<Event<C, D>> {
         &self.chan
     }
 
-    fn chan_mut(&mut self) -> &mut EventChannel<Event<C, D>> {
+    pub fn chan_mut(&mut self) -> &mut EventChannel<Event<C, D>> {
         &mut self.chan
     }
 }

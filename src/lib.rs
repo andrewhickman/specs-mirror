@@ -154,7 +154,7 @@ pub trait StorageExt<C, D: UpdateEventData<C>> {
 /// Extension methods for [`Storage`] to help read events from [`MirroredStorage`].
 ///
 /// [`MirroredStorage`]: struct.MirroredStorage.html
-/// [`Storage`]: ../specs/storage/struct.Storage.html
+/// [`Storage`]: https://docs.rs/specs/0.11.2/specs/storage/struct.Storage.html
 pub trait StorageMutExt<C, D: UpdateEventData<C>>: StorageExt<C, D> {
     /// Register a new reader of insertion and removal events.
     fn register_reader(&mut self) -> ReaderId<UpdateEvent<C, D>>;

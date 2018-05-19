@@ -15,10 +15,12 @@ pub struct MirroredStorage<C, D: EventData<C>, S = DenseVecStorage<C>> {
 }
 
 impl<C, D: EventData<C>, S> MirroredStorage<C, D, S> {
+    /// Get access to the event channel.
     pub fn chan(&self) -> &EventChannel<Event<C, D>> {
         &self.chan
     }
 
+    /// Get mutable access to the event channel.
     pub fn chan_mut(&mut self) -> &mut EventChannel<Event<C, D>> {
         &mut self.chan
     }
@@ -114,7 +116,7 @@ impl<C> EventData<C> for IndexData {
     }
 }
 
-/// An implementation of `EventData` which provides both the index and a clone of inserted or 
+/// An implementation of `EventData` which provides both the index and a clone of inserted or
 /// removed components.
 pub struct CloneData;
 

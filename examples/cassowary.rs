@@ -1,5 +1,5 @@
 //! This example demonstrates the use of `MirroredStorage` to keep the constraints in the `specs`
-//! world synchronised with the constraints in a `cassowary` solver.
+//! world synchronized with the constraints in a `cassowary` solver.
 
 extern crate cassowary;
 extern crate specs_mirror;
@@ -37,7 +37,7 @@ impl<'a> System<'a> for LayoutSystem {
     type SystemData = ReadStorage<'a, Constraints>;
 
     fn run(&mut self, cns: Self::SystemData) {
-        // Synchronise the changes to constraints in specs with the solver.
+        // synchronize the changes to constraints in specs with the solver.
         for event in cns.unprotected_storage().read(&mut self.reader) {
             match event {
                 Event::Inserted((_, data)) => {

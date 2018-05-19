@@ -1,4 +1,4 @@
-A storage for use with [specs] to help synchronise with an external library.
+A storage for use with [specs] to help synchronize with an external library.
 
 Check the [examples directory](examples) for usage.
 

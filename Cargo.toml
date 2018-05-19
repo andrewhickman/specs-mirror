@@ -1,7 +1,7 @@
 [package]
 name = "specs-mirror"
 description = "A storage for use with specs to help synchronize with an external library."
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
 repository = "https://github.com/andrewhickman/specs-mirror"
 documentation = "https://docs.rs/specs-mirror"

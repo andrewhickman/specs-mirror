@@ -3,7 +3,7 @@ extern crate shrev;
 extern crate specs;
 
 use hibitset::BitSetLike;
-use shrev::EventChannel;
+use shrev::{EventChannel, EventIterator};
 use specs::prelude::*;
 use specs::storage::{TryDefault, UnprotectedStorage};
 use specs::world::Index;
@@ -20,9 +20,19 @@ impl<C, D: EventData<C>, S> MirroredStorage<C, D, S> {
         &self.chan
     }
 
+    // Read events from the event channel.
+    pub fn read(&self, reader: &mut ReaderId<Event<C, D>>) -> EventIterator<Event<C, D>> {
+        self.chan().read(reader)
+    }
+
     /// Get mutable access to the event channel.
     pub fn chan_mut(&mut self) -> &mut EventChannel<Event<C, D>> {
         &mut self.chan
+    }
+
+    /// Register a reader with the event channel.
+    pub fn register_reader(&mut self) -> ReaderId<Event<C, D>> {
+        self.chan_mut().register_reader() 
     }
 }
 

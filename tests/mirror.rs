@@ -34,7 +34,7 @@ impl<'a> System<'a> for CompSystem {
     type SystemData = ReadStorage<'a, Comp>;
 
     fn run(&mut self, comp: Self::SystemData) {
-        for event in comp.unprotected_storage().chan().read(&mut self.reader) {
+        for event in comp.unprotected_storage().read(&mut self.reader) {
             match *event {
                 Event::Inserted((id, ref data)) => {
                     assert!(self.store.insert(id, data.clone()).is_none())

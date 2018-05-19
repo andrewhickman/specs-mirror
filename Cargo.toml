@@ -2,7 +2,11 @@
 authors = ["Andrew Hickman <andrew.hickman1@sky.com>"]
 name = "specs-mirror"
 version = "0.1.0"
+
 [dependencies]
 hibitset = "0.5.0"
 specs = "0.11.2"
 shrev = "1.0.0"
+
+[dev-dependencies]
+cassowary = "0.3.0"

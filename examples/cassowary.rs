@@ -2,16 +2,16 @@
 //! world synchronized with the constraints in a `cassowary` solver.
 
 extern crate cassowary;
-extern crate specs_mirror;
-extern crate specs;
 extern crate shrev;
+extern crate specs;
+extern crate specs_mirror;
 
-use cassowary::{Constraint, Solver, Variable};
-use cassowary::WeightedRelation::*;
 use cassowary::strength::*;
-use specs_mirror::{CloneData, Event,  MirroredStorage};
-use specs::prelude::*;
+use cassowary::WeightedRelation::*;
+use cassowary::{Constraint, Solver, Variable};
 use shrev::ReaderId;
+use specs::prelude::*;
+use specs_mirror::{CloneData, Event, MirroredStorage};
 
 #[derive(Clone, Debug)]
 struct Constraints(Vec<Constraint>);
@@ -40,10 +40,10 @@ impl<'a> System<'a> for LayoutSystem {
         // synchronize the changes to constraints in specs with the solver.
         for event in cns.unprotected_storage().read(&mut self.reader) {
             match event {
-                Event::Inserted((_, data)) => {
+                Event::Inserted(_, data) => {
                     self.solver.add_constraints(&data.0).ok();
-                },
-                Event::Removed((_, data)) => for cn in &data.0 {
+                }
+                Event::Removed(_, data) => for cn in &data.0 {
                     self.solver.remove_constraint(cn).ok();
                 },
             }
@@ -64,18 +64,21 @@ fn main() {
     let var0 = Variable::new();
     let var1 = Variable::new();
 
-    let e1 = world.create_entity()
-        .with(Constraints(vec![var0 + 50.0 |EQ(REQUIRED)| var1]))
+    let e1 = world
+        .create_entity()
+        .with(Constraints(vec![var0 + 50.0 | EQ(REQUIRED) | var1]))
         .build();
-    let e2 = world.create_entity()
-        .with(Constraints(vec![var1 |EQ(REQUIRED)| 100.0]))
+    let _e2 = world
+        .create_entity()
+        .with(Constraints(vec![var1 | EQ(REQUIRED) | 100.0]))
         .build();
 
     sys.run_now(&mut world.res);
 
     world.delete_entity(e1);
-    let e3 = world.create_entity()
-        .with(Constraints(vec![var1 * 2.0 |EQ(REQUIRED)| var0]))
+    let _e3 = world
+        .create_entity()
+        .with(Constraints(vec![var1 * 2.0 | EQ(REQUIRED) | var0]))
         .build();
 
     sys.run_now(&mut world.res);

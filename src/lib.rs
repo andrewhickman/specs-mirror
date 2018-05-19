@@ -5,8 +5,11 @@ extern crate specs;
 use hibitset::BitSetLike;
 use shrev::{EventChannel, EventIterator};
 use specs::prelude::*;
-use specs::storage::{TryDefault, UnprotectedStorage};
+use specs::storage::{TryDefault, MaskedStorage, UnprotectedStorage};
 use specs::world::Index;
+
+use std::any::Any;
+use std::ops::{Deref, DerefMut};
 
 /// A `specs` storage intended for synchronisation with external libraries.
 pub struct MirroredStorage<C, D: EventData<C>, S = DenseVecStorage<C>> {
@@ -21,7 +24,7 @@ impl<C, D: EventData<C>, S> MirroredStorage<C, D, S> {
     }
 
     // Read events from the event channel.
-    pub fn read(&self, reader: &mut ReaderId<Event<C, D>>) -> EventIterator<Event<C, D>> {
+    pub fn read_events(&self, reader: &mut ReaderId<Event<C, D>>) -> EventIterator<Event<C, D>> {
         self.chan().read(reader)
     }
 
@@ -32,24 +35,25 @@ impl<C, D: EventData<C>, S> MirroredStorage<C, D, S> {
 
     /// Register a reader with the event channel.
     pub fn register_reader(&mut self) -> ReaderId<Event<C, D>> {
-        self.chan_mut().register_reader() 
+        self.chan_mut().register_reader()
     }
 }
 
-/// An event produced when components are inserted and removed from a `MirroredStorage`.
+/// An event produced when components are inserted and removed from a
+/// [`MirroredStorage`](struct.MirroredStorage.html).
 /// The type parameter `D` controls what data is sent with this event.
 pub enum Event<C, D: EventData<C>> {
-    Inserted(D::InsertData),
-    Removed(D::RemoveData),
+    Inserted(Index, D::InsertData),
+    Removed(Index, D::RemoveData),
 }
 
 impl<C, D: EventData<C>> Event<C, D> {
     fn inserted(id: Index, comp: &mut C) -> Self {
-        Event::Inserted(D::insert_data(id, comp))
+        Event::Inserted(id, D::insert_data(id, comp))
     }
 
     fn removed(id: Index, comp: &mut C) -> Self {
-        Event::Removed(D::remove_data(id, comp))
+        Event::Removed(id, D::remove_data(id, comp))
     }
 }
 
@@ -113,39 +117,77 @@ where
     }
 }
 
-/// An implementation of `EventData` which provides the `Index` of inserted and removed
-/// components.
-pub struct IndexData;
+/// An implementation of `EventData` which does not provide any data.
+pub struct NoData;
 
-impl<C> EventData<C> for IndexData {
-    type InsertData = Index;
-    type RemoveData = Index;
+impl<C> EventData<C> for NoData {
+    type InsertData = ();
+    type RemoveData = ();
 
-    fn insert_data(id: Index, _: &mut C) -> Self::InsertData {
-        id
+    fn insert_data(_: Index, _: &mut C) -> Self::InsertData {
+        ()
     }
 
-    fn remove_data(id: Index, _: &mut C) -> Self::RemoveData {
-        id
+    fn remove_data(_: Index, _: &mut C) -> Self::RemoveData {
+        ()
     }
 }
 
-/// An implementation of `EventData` which provides both the index and a clone of inserted or
-/// removed components.
+/// An implementation of `EventData` which provides a clone of inserted or removed components.
 pub struct CloneData;
 
 impl<C> EventData<C> for CloneData
 where
     C: Clone + shrev::Event,
 {
-    type InsertData = (Index, C);
-    type RemoveData = (Index, C);
+    type InsertData = C;
+    type RemoveData = C;
 
-    fn insert_data(id: Index, comp: &mut C) -> Self::InsertData {
-        (id, comp.clone())
+    fn insert_data(_: Index, comp: &mut C) -> Self::InsertData {
+        comp.clone()
     }
 
-    fn remove_data(id: Index, comp: &mut C) -> Self::RemoveData {
-        (id, comp.clone())
+    fn remove_data(_: Index, comp: &mut C) -> Self::RemoveData {
+        comp.clone()
+    }
+}
+
+/// Extension methods for [`Storage`] to help read events from [`MirroredStorage`].
+///
+/// [`MirroredStorage`]: struct.MirroredStorage.html
+/// [`Storage`]: ../specs/storage/struct.Storage.html
+pub trait StorageExt<C, D: EventData<C>> {
+    fn read_events(&self, reader: &mut ReaderId<Event<C, D>>) -> EventIterator<Event<C, D>>;
+}
+
+/// Extension methods for [`Storage`] to help read events from [`MirroredStorage`].
+///
+/// [`MirroredStorage`]: struct.MirroredStorage.html
+/// [`Storage`]: ../specs/storage/struct.Storage.html
+pub trait StorageMutExt<C, D: EventData<C>>: StorageExt<C, D> {
+    fn register_reader(&mut self) -> ReaderId<Event<C, D>>;
+}
+
+impl<'a, C, D, S, M> StorageExt<C, D> for Storage<'a, C, M>
+where
+    C: Component<Storage = MirroredStorage<C, D, S>>,
+    D: EventData<C>,
+    S: UnprotectedStorage<C> + Any + Send + Sync,
+    M: Deref<Target = MaskedStorage<C>>,
+{
+    fn read_events(&self, reader: &mut ReaderId<Event<C, D>>) -> EventIterator<Event<C, D>> {
+        self.unprotected_storage().read_events(reader)
+    }
+}
+
+impl<'a, C, D, S, M> StorageMutExt<C, D> for Storage<'a, C, M>
+where
+    C: Component<Storage = MirroredStorage<C, D, S>>,
+    D: EventData<C>,
+    S: UnprotectedStorage<C> + Any + Send + Sync,
+    M: DerefMut<Target = MaskedStorage<C>>,
+{
+    fn register_reader(&mut self) -> ReaderId<Event<C, D>> {
+        self.unprotected_storage_mut().register_reader()
     }
 }

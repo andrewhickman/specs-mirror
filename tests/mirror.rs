@@ -36,10 +36,10 @@ impl<'a> System<'a> for CompSystem {
     fn run(&mut self, comp: Self::SystemData) {
         for event in comp.unprotected_storage().read(&mut self.reader) {
             match *event {
-                Event::Inserted((id, ref data)) => {
+                Event::Inserted(id, ref data) => {
                     assert!(self.store.insert(id, data.clone()).is_none())
                 }
-                Event::Removed((id, ref data)) => {
+                Event::Removed(id, ref data) => {
                     assert_eq!(self.store.remove(&id), Some(data.clone()))
                 }
             }

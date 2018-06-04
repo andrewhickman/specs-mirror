@@ -9,20 +9,57 @@ extern crate specs_mirror;
 use cassowary::strength::*;
 use cassowary::WeightedRelation::*;
 use cassowary::{Constraint, Solver, Variable};
-use shrev::ReaderId;
+use shrev::{EventChannel, ReaderId};
 use specs::prelude::*;
+use specs::world::Index;
 use specs_mirror::*;
 
 #[derive(Clone, Debug)]
 struct Constraints(Vec<Constraint>);
 
 impl Component for Constraints {
-    type Storage = MirroredStorage<Self, CloneData>;
+    type Storage = MirroredStorage<Self>;
+}
+
+pub enum ConstraintsUpdate {
+    Insert(Constraint),
+    Remove(usize),
+}
+
+enum ConstraintsEvent {
+    Insert(Constraint),
+    Remove(Constraint),
+}
+
+impl Mirrored for Constraints {
+    type State = ConstraintsUpdate;
+    type Event = ConstraintsEvent;
+
+    fn insert(&mut self, chan: &mut EventChannel<Self::Event>, _: Index) {
+        chan.iter_write(self.0.iter().cloned().map(ConstraintsEvent::Insert));
+    }
+
+    fn remove(&mut self, chan: &mut EventChannel<Self::Event>, _: Index) {
+        chan.iter_write(self.0.iter().cloned().map(ConstraintsEvent::Remove));
+    }
+
+    fn modify(&mut self, chan: &mut EventChannel<Self::Event>, _: Entity, state: Self::State) {
+        match state {
+            ConstraintsUpdate::Insert(con) => {
+                self.0.push(con.clone());
+                chan.single_write(ConstraintsEvent::Insert(con));
+            },
+            ConstraintsUpdate::Remove(idx) => {
+                let con = self.0.remove(idx);
+                chan.single_write(ConstraintsEvent::Remove(con));
+            },
+        }
+    }
 }
 
 struct LayoutSystem {
     solver: Solver,
-    reader: ReaderId<UpdateEvent<Constraints, CloneData>>,
+    reader: ReaderId<ConstraintsEvent>,
 }
 
 impl LayoutSystem {
@@ -40,11 +77,11 @@ impl<'a> System<'a> for LayoutSystem {
         // synchronize the changes to constraints in specs with the solver.
         for event in cns.read_events(&mut self.reader) {
             match event {
-                UpdateEvent::Inserted(_, data) => {
-                    self.solver.add_constraints(&data.0).ok();
-                }
-                UpdateEvent::Removed(_, data) => for cn in &data.0 {
-                    self.solver.remove_constraint(cn).ok();
+                ConstraintsEvent::Insert(con) => {
+                    self.solver.add_constraint(con.clone()).ok();
+                },
+                ConstraintsEvent::Remove(con) => {
+                    self.solver.remove_constraint(con).ok();
                 },
             }
         }

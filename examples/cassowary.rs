@@ -108,10 +108,16 @@ fn main() {
     sys.run_now(&mut world.res);
 
     world.delete_entity(e1).unwrap();
-    let _e3 = world
+    let e3 = world
         .create_entity()
-        .with(Constraints(vec![var1 * 2.0 | EQ(REQUIRED) | var0]))
+        .with(Constraints(vec![]))
         .build();
+
+    {
+        let mut storage = world.write_storage::<Constraints>();
+        let (cons, chan) = storage.modify(e3).unwrap();
+        cons.add(chan, var1 * 2.0 | EQ(REQUIRED) | var0);
+    }
 
     sys.run_now(&mut world.res);
 }

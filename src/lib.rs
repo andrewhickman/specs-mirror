@@ -44,11 +44,9 @@ pub trait Mirrored {
 
 impl<C: Mirrored, S: UnprotectedStorage<C>> MirroredStorage<C, S> {
     /// Modify the component at the given index.
-    unsafe fn modify<T, F>(&mut self, id: Index, f: F) -> T
-    where
-        F: FnOnce(&mut C, &mut EventChannel<C::Event>) -> T
+    unsafe fn modify(&mut self, id: Index) -> (&mut C, &mut EventChannel<C::Event>)
     {
-        f(self.store.get_mut(id), &mut self.chan)
+        (self.store.get_mut(id), &mut self.chan)
     }
 }
 
@@ -113,10 +111,8 @@ pub trait StorageMutExt<C: Mirrored>: StorageExt<C> {
     /// Register a new reader of insertion and removal events.
     fn register_reader(&mut self) -> ReaderId<C::Event>;
 
-    /// Update an entity with a new state. If the entity does not exist `None` is returned.
-    fn modify<T, F>(&mut self, entity: Entity, f: F) -> Option<T>
-    where
-        F: FnOnce(&mut C, &mut EventChannel<C::Event>) -> T;
+    /// Get a mutable reference to the component and the event channel for update events.
+    fn modify(&mut self, entity: Entity) -> Option<(&mut C, &mut EventChannel<C::Event>)>;
 }
 
 impl<'a, C, S, D> StorageExt<C> for Storage<'a, C, D>
@@ -140,13 +136,11 @@ where
         self.unprotected_storage_mut().chan.register_reader()
     }
 
-    fn modify<T, F>(&mut self, entity: Entity, f: F) -> Option<T> 
-    where 
-        F: FnOnce(&mut C, &mut EventChannel<C::Event>) -> T
+    fn modify(&mut self, entity: Entity) -> Option<(&mut C, &mut EventChannel<C::Event>)> 
     {
         if self.contains(entity) {
             Some(unsafe {
-                self.unprotected_storage_mut().modify(entity.id(), f)
+                self.unprotected_storage_mut().modify(entity.id())
             })
         } else {
             None

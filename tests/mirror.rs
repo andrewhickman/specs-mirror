@@ -85,8 +85,9 @@ fn modify(comps: &mut WriteStorage<Comp>, ent: Entity, i: usize) {
             comps.remove(ent);
         }
         3 => {
-            comps
-                .modify(ent, |comp, chan| comp.set(chan, ent, Comp(Arc::from(ent.id().to_string()))));
+            if let Some((comp, chan)) = comps.modify(ent) {
+                comp.set(chan, ent, Comp(Arc::from(ent.id().to_string())));
+            }
         }
         _ => (),
     }

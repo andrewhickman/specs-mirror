@@ -15,24 +15,32 @@ use specs::world::Index;
 use specs_mirror::*;
 
 #[derive(Clone, Debug)]
-struct Constraints(Vec<Constraint>);
+pub struct Constraints(Vec<Constraint>);
 
 impl Component for Constraints {
     type Storage = MirroredStorage<Self>;
 }
 
-pub enum ConstraintsUpdate {
-    Insert(Constraint),
-    Remove(usize),
+impl Constraints {
+    pub fn add(&mut self, chan: &mut EventChannel<ConstraintsEvent>, con: Constraint) -> usize {
+        self.0.push(con.clone());
+        chan.single_write(ConstraintsEvent::Insert(con));
+        self.0.len()
+    }
+
+    pub fn remove(&mut self, chan: &mut EventChannel<ConstraintsEvent>, idx: usize) -> Constraint {
+        let con = self.0.remove(idx);
+        chan.single_write(ConstraintsEvent::Remove(con.clone()));
+        con
+    }
 }
 
-enum ConstraintsEvent {
+pub enum ConstraintsEvent {
     Insert(Constraint),
     Remove(Constraint),
 }
 
 impl Mirrored for Constraints {
-    type State = ConstraintsUpdate;
     type Event = ConstraintsEvent;
 
     fn insert(&mut self, chan: &mut EventChannel<Self::Event>, _: Index) {
@@ -41,19 +49,6 @@ impl Mirrored for Constraints {
 
     fn remove(&mut self, chan: &mut EventChannel<Self::Event>, _: Index) {
         chan.iter_write(self.0.iter().cloned().map(ConstraintsEvent::Remove));
-    }
-
-    fn modify(&mut self, chan: &mut EventChannel<Self::Event>, _: Entity, state: Self::State) {
-        match state {
-            ConstraintsUpdate::Insert(con) => {
-                self.0.push(con.clone());
-                chan.single_write(ConstraintsEvent::Insert(con));
-            },
-            ConstraintsUpdate::Remove(idx) => {
-                let con = self.0.remove(idx);
-                chan.single_write(ConstraintsEvent::Remove(con));
-            },
-        }
     }
 }
 

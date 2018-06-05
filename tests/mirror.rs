@@ -23,7 +23,6 @@ enum CompEvent {
 }
 
 impl Mirrored for Comp {
-    type State = Comp;
     type Event = CompEvent;
 
     fn insert(&mut self, chan: &mut EventChannel<Self::Event>, id: Index) {
@@ -33,8 +32,10 @@ impl Mirrored for Comp {
     fn remove(&mut self, chan: &mut EventChannel<Self::Event>, id: Index) {
         chan.single_write(CompEvent::Removed(id, self.clone()));
     }
+}
 
-    fn modify(&mut self, chan: &mut EventChannel<Self::Event>, entity: Entity, state: Self::State) {
+impl Comp {
+    fn set(&mut self, chan: &mut EventChannel<CompEvent>, entity: Entity, state: Comp) {
         chan.single_write(CompEvent::Removed(entity.id(), self.clone()));
         *self = state;
         chan.single_write(CompEvent::Inserted(entity.id(), self.clone()));
@@ -85,7 +86,7 @@ fn modify(comps: &mut WriteStorage<Comp>, ent: Entity, i: usize) {
         }
         3 => {
             comps
-                .modify(ent, Comp(Arc::from(ent.id().to_string())));
+                .modify(ent, |comp, chan| comp.set(chan, ent, Comp(Arc::from(ent.id().to_string()))));
         }
         _ => (),
     }

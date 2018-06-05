@@ -30,43 +30,25 @@ pub struct MirroredStorage<C: Mirrored, S = DenseVecStorage<C>> {
 ///
 /// [`MirroredStorage`]: struct.MirroredStorage.html
 pub trait Mirrored {
-    /// Data used to modify this component.
-    type State;
-
     /// The event type for reporting changes to this component.
     type Event: shrev::Event;
 
     /// Called when inserting the component.
     /// This method should not be called directly.
-    fn insert(&mut self, chan: &mut EventChannel<Self::Event>, id: Index);
+    fn insert(&mut self, _chan: &mut EventChannel<Self::Event>, _id: Index) {}
 
     /// Called when removing the component.
     /// This method should not be called directly.
-    fn remove(&mut self, chan: &mut EventChannel<Self::Event>, id: Index);
-
-    /// Called by [`StorageMutExt::modify`] when modifying the component.
-    /// This method should not be called directly.
-    ///
-    /// [`StorageMutExt::modify`]: trait.StorageMutExt.html#tymethod.modify
-    fn modify(&mut self, chan: &mut EventChannel<Self::Event>, entity: Entity, state: Self::State);
-}
-
-impl<C: Mirrored, S> MirroredStorage<C, S> {
-    /// Get access to the event channel.
-    fn chan(&self) -> &EventChannel<C::Event> {
-        &self.chan
-    }
-
-    /// Get mutable access to the event channel.
-    fn chan_mut(&mut self) -> &mut EventChannel<C::Event> {
-        &mut self.chan
-    }
+    fn remove(&mut self, _chan: &mut EventChannel<Self::Event>, _id: Index) {}
 }
 
 impl<C: Mirrored, S: UnprotectedStorage<C>> MirroredStorage<C, S> {
     /// Modify the component at the given index.
-    unsafe fn modify(&mut self, entity: Entity, state: C::State) {
-        self.store.get_mut(entity.id()).modify(&mut self.chan, entity, state)
+    unsafe fn modify<T, F>(&mut self, id: Index, f: F) -> T
+    where
+        F: FnOnce(&mut C, &mut EventChannel<C::Event>) -> T
+    {
+        f(self.store.get_mut(id), &mut self.chan)
     }
 }
 
@@ -131,9 +113,10 @@ pub trait StorageMutExt<C: Mirrored>: StorageExt<C> {
     /// Register a new reader of insertion and removal events.
     fn register_reader(&mut self) -> ReaderId<C::Event>;
 
-    /// Update an entity with a new state. If the entity is not in this storage the
-    /// state is returned.
-    fn modify(&mut self, entity: Entity, state: C::State) -> Option<C::State>;
+    /// Update an entity with a new state. If the entity does not exist `None` is returned.
+    fn modify<T, F>(&mut self, entity: Entity, f: F) -> Option<T>
+    where
+        F: FnOnce(&mut C, &mut EventChannel<C::Event>) -> T;
 }
 
 impl<'a, C, S, D> StorageExt<C> for Storage<'a, C, D>
@@ -143,7 +126,7 @@ where
     D: Deref<Target = MaskedStorage<C>>,
 {
     fn read_events(&self, reader: &mut ReaderId<C::Event>) -> EventIterator<C::Event> {
-        self.unprotected_storage().chan().read(reader)
+        self.unprotected_storage().chan.read(reader)
     }
 }
 
@@ -154,17 +137,19 @@ where
     D: DerefMut<Target = MaskedStorage<C>>,
 {
     fn register_reader(&mut self) -> ReaderId<C::Event> {
-        self.unprotected_storage_mut().chan_mut().register_reader()
+        self.unprotected_storage_mut().chan.register_reader()
     }
 
-    fn modify(&mut self, entity: Entity, state: C::State) -> Option<C::State> {
+    fn modify<T, F>(&mut self, entity: Entity, f: F) -> Option<T> 
+    where 
+        F: FnOnce(&mut C, &mut EventChannel<C::Event>) -> T
+    {
         if self.contains(entity) {
-            unsafe {
-                self.unprotected_storage_mut().modify(entity, state);
-            }
-            None
+            Some(unsafe {
+                self.unprotected_storage_mut().modify(entity.id(), f)
+            })
         } else {
-            return Some(state);
+            None
         }
     }
 }

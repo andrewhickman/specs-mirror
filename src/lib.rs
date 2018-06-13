@@ -1,7 +1,7 @@
 #![deny(missing_docs)]
 //! This crate provides [`MirroredStorage`], an implementation of a [`specs`] storage
 //! that can track additions, removals and changes to the component it contains.
-//! 
+//!
 //! [`MirroredStorage`]: struct.MirroredStorage.html
 //! [`specs`]: https://crates.io/crates/specs
 
@@ -12,14 +12,14 @@ extern crate specs;
 use hibitset::BitSetLike;
 use shrev::{EventChannel, EventIterator};
 use specs::prelude::*;
-use specs::storage::{TryDefault, MaskedStorage, UnprotectedStorage};
+use specs::storage::{MaskedStorage, TryDefault, UnprotectedStorage};
 use specs::world::Index;
 
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
 /// A [`specs`] storage intended for synchronisation with external libraries.
-/// 
+///
 /// [`specs`]: https://crates.io/crates/specs
 pub struct MirroredStorage<C: Mirrored, S = DenseVecStorage<C>> {
     chan: EventChannel<C::Event>,
@@ -44,8 +44,7 @@ pub trait Mirrored {
 
 impl<C: Mirrored, S: UnprotectedStorage<C>> MirroredStorage<C, S> {
     /// Modify the component at the given index.
-    unsafe fn modify(&mut self, id: Index) -> (&mut C, &mut EventChannel<C::Event>)
-    {
+    unsafe fn modify(&mut self, id: Index) -> (&mut C, &mut EventChannel<C::Event>) {
         (self.store.get_mut(id), &mut self.chan)
     }
 }
@@ -113,6 +112,9 @@ pub trait StorageMutExt<C: Mirrored>: StorageExt<C> {
 
     /// Get a mutable reference to the component and the event channel for update events.
     fn modify(&mut self, entity: Entity) -> Option<(&mut C, &mut EventChannel<C::Event>)>;
+
+    /// Get a mutable reference to the event channel for update events.
+    fn event_channel(&mut self) -> &mut EventChannel<C::Event>;
 }
 
 impl<'a, C, S, D> StorageExt<C> for Storage<'a, C, D>
@@ -136,14 +138,15 @@ where
         self.unprotected_storage_mut().chan.register_reader()
     }
 
-    fn modify(&mut self, entity: Entity) -> Option<(&mut C, &mut EventChannel<C::Event>)> 
-    {
+    fn modify(&mut self, entity: Entity) -> Option<(&mut C, &mut EventChannel<C::Event>)> {
         if self.contains(entity) {
-            Some(unsafe {
-                self.unprotected_storage_mut().modify(entity.id())
-            })
+            Some(unsafe { self.unprotected_storage_mut().modify(entity.id()) })
         } else {
             None
         }
+    }
+
+    fn event_channel(&mut self) -> &mut EventChannel<C::Event> {
+        &mut self.unprotected_storage_mut().chan
     }
 }

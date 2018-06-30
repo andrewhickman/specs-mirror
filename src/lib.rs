@@ -108,7 +108,9 @@ pub trait StorageExt<C: Mirrored> {
 /// [`Storage`]: https://docs.rs/specs/0.11.2/specs/storage/struct.Storage.html
 pub trait StorageMutExt<C: Mirrored>: StorageExt<C> {
     /// Register a new reader of insertion and removal events.
-    fn register_reader(&mut self) -> ReaderId<C::Event>;
+    fn register_reader(&mut self) -> ReaderId<C::Event> {
+        self.event_channel().register_reader()
+    }
 
     /// Get a mutable reference to the component and the event channel for update events.
     fn modify(&mut self, entity: Entity) -> Option<(&mut C, &mut EventChannel<C::Event>)>;
@@ -134,10 +136,6 @@ where
     S: UnprotectedStorage<C> + Any + Send + Sync,
     D: DerefMut<Target = MaskedStorage<C>>,
 {
-    fn register_reader(&mut self) -> ReaderId<C::Event> {
-        self.unprotected_storage_mut().chan.register_reader()
-    }
-
     fn modify(&mut self, entity: Entity) -> Option<(&mut C, &mut EventChannel<C::Event>)> {
         if self.contains(entity) {
             Some(unsafe { self.unprotected_storage_mut().modify(entity.id()) })
@@ -147,6 +145,6 @@ where
     }
 
     fn event_channel(&mut self) -> &mut EventChannel<C::Event> {
-        &mut self.unprotected_storage_mut().chan
+        unsafe { &mut self.unprotected_storage_mut().chan }
     }
 }
